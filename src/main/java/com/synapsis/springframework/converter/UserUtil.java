@@ -1,6 +1,7 @@
 package com.synapsis.springframework.converter;
 
 import com.synapsis.springframework.entity.SynapsisUser;
+import io.netty.util.internal.StringUtil;
 import org.springframework.beans.BeanUtils;
 
 public class UserUtil {
@@ -14,6 +15,7 @@ public class UserUtil {
   public static com.synapsis.springframework.models.SynapsisUser toModel(SynapsisUser user){
     com.synapsis.springframework.models.SynapsisUser model = new com.synapsis.springframework.models.SynapsisUser();
     BeanUtils.copyProperties(user, model);
+    model.setPassword(StringUtil.EMPTY_STRING);
     return model;
   }
 }

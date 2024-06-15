@@ -20,6 +20,7 @@ import com.synapsis.springframework.service.CartService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -63,27 +64,31 @@ public class CartServiceImpl implements CartService {
   @Override
   public Boolean updateCart(CartItemRequest request) {
     Optional<Cart> userCart = cartRepository.getCartByUserId(request.getUserId());
+    Product product = productRepository.findById(request.getProductId()).orElseThrow(NoSuchElementException::new);
+    if(!isQuantityValid(request, product)) {
+      throw new IllegalStateException("Quantity is over product's stock");
+    }
     if(userCart.isPresent()){
       Optional<com.synapsis.springframework.entity.CartItem> existing = findCartItem(request, userCart);
       if(existing.isPresent()){
         existing.get().setQuantity(request.getQty());
         cartItemRepository.save(existing.get());
       } else {
-        Product product = productRepository.findById(request.getProductId()).orElseThrow(NoSuchElementException::new);
         cartItemRepository.save(createCartItem(request, userCart.get(), product));
       }
-
     } else {
       Cart newCart = new Cart();
       SynapsisUser user = synapsisUserRepository.findById(request.getUserId()).orElseThrow(NoSuchElementException::new);
-      Product product = productRepository.findById(request.getProductId()).orElseThrow(NoSuchElementException::new);
       newCart.setUser(user);
       newCart = cartRepository.save(newCart);
-
       com.synapsis.springframework.entity.CartItem cartItem = createCartItem(request, newCart, product);
       cartItemRepository.save(cartItem);
     }
     return Boolean.TRUE;
+  }
+
+  private static boolean isQuantityValid(CartItemRequest request, Product product) {
+    return request.getQty() >= 1 && request.getQty() <= product.getStock();
   }
 
 
@@ -109,7 +114,10 @@ public class CartServiceImpl implements CartService {
     if(userCart.isPresent()){
       SynapsisUser user = synapsisUserRepository.findById(request.getUserId()).orElseThrow(NoSuchElementException::new);
       List<com.synapsis.springframework.entity.CartItem> cartItems = cartItemRepository
-          .findByIdIn(request.getIds());
+          .findByIdInAndCart(request.getIds(), userCart.get());
+      if(CollectionUtils.isEmpty(cartItems)){
+        throw new IllegalStateException("Cart items not found");
+      }
       Order newOrder = Order.builder()
           .user(user)
           .date(new Date())
@@ -119,12 +127,28 @@ public class CartServiceImpl implements CartService {
       List<OrderItem> orderItems = new ArrayList<>();
       cartItems
           .forEach(item -> orderItems.add(OrderItemUtil.toOrderItem(item, saved)));
-      orderItemRepository.saveAll(orderItems);
+      List<OrderItem> savedItems = orderItemRepository.saveAll(orderItems);
       cartItemRepository.deleteAll(cartItems);
+      reduceStock(savedItems);
       return saved.getId();
     } else {
       throw new NoSuchElementException();
     }
+  }
+
+  private void reduceStock(List<OrderItem> products){
+    List<Product> dbProducts = productRepository.findByIdIn(products
+        .stream()
+        .map(OrderItem::getProduct)
+        .map(Product::getId)
+        .collect(Collectors.toList()));
+    dbProducts
+        .forEach(product -> products
+              .stream()
+              .filter(p -> p.getProduct().getId().equals(product.getId()))
+              .findFirst()
+              .ifPresent(p -> product.setStock(product.getStock()-p.getQuantity())));
+    productRepository.saveAll(dbProducts);
   }
 
   private Optional<com.synapsis.springframework.entity.CartItem> findCartItem(CartItemRequest request,

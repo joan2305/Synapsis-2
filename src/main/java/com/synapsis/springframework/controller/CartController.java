@@ -3,13 +3,11 @@ package com.synapsis.springframework.controller;
 
 import com.synapsis.springframework.converter.ResponseUtil;
 import com.synapsis.springframework.models.CartItem;
-import com.synapsis.springframework.models.Product;
 import com.synapsis.springframework.models.constant.ApiPath;
 import com.synapsis.springframework.request.CartItemRequest;
 import com.synapsis.springframework.request.CheckoutRequest;
 import com.synapsis.springframework.response.Response;
 import com.synapsis.springframework.service.CartService;
-import com.synapsis.springframework.service.ProductService;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -17,10 +15,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.validation.Valid;
 import java.util.List;
 
 @RestController
@@ -43,7 +40,7 @@ public class CartController {
   produces = MediaType.APPLICATION_JSON_VALUE,
   consumes = MediaType.APPLICATION_JSON_VALUE, 
   path = "/{userId}")
-  public Response<Boolean> addToCart(@PathVariable String userId, @RequestBody CartItemRequest request){
+  public Response<Boolean> addToCart(@PathVariable String userId, @Valid @RequestBody CartItemRequest request){
     request.setUserId(userId);
     Boolean result = cartService.updateCart(request);
     return ResponseUtil.ok(result);
