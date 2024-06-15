@@ -39,4 +39,9 @@ public class Order implements Serializable {
   @Column(name = "ORDER_DATE")
   @Temporal(TemporalType.TIMESTAMP)
   private Date date;
+
+  @Column(name = "PAYMENT_AMOUNT")
+  private Double paymentAmount;
+
+
 }

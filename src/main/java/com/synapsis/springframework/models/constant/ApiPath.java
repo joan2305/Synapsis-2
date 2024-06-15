@@ -5,4 +5,6 @@ public interface ApiPath {
   String API = "/api";
   String PRODUCTS = API + "/products";
   String CART = API + "/carts";
+
+  String USER = API + "/users";
 }
